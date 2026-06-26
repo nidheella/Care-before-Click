@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Care Before Click</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; min-height: 100vh; background: linear-gradient(135deg, #fce4ec 0%, #e3f2fd 25%, #e8f5e9 50%, #fff3e0 75%, #f3e5f5 100%); background-attachment: fixed; }
+
+  /* Language Selector */
+  #lang-bar { background: rgba(255,255,255,0.85); backdrop-filter: blur(8px); padding: 10px 24px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(0,0,0,0.08); }
+  #lang-bar span { font-size: 13px; color: #555; }
+  .lang-btn { padding: 5px 14px; border-radius: 20px; border: 1.5px solid #7c3aed; background: white; color: #7c3aed; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+  .lang-btn.active, .lang-btn:hover { background: #7c3aed; color: white; }
+
+  /* Nav */
+  nav { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); padding: 14px 32px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .logo { font-size: 20px; font-weight: 700; color: #7c3aed; flex: 1; }
+  .nav-links { display: flex; gap: 10px; flex-wrap: wrap; }
+  .nav-link { padding: 6px 14px; border-radius: 20px; background: rgba(124,58,237,0.08); color: #7c3aed; cursor: pointer; font-size: 13px; font-weight: 500; border: none; transition: all 0.2s; }
+  .nav-link:hover { background: #7c3aed; color: white; }
+
+  /* Sections */
+  section { display: none; padding: 32px 20px; max-width: 960px; margin: 0 auto; }
+  section.active { display: block; }
+
+  /* Hero */
+  .hero { text-align: center; padding: 60px 20px; }
+  .hero h1 { font-size: clamp(28px,5vw,52px); font-weight: 800; color: #1a1a2e; line-height: 1.2; margin-bottom: 16px; }
+  .hero h1 span { background: linear-gradient(90deg,#7c3aed,#e91e8c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { font-size: 18px; color: #444; margin-bottom: 36px; max-width: 600px; margin-left: auto; margin-right: auto; }
+  .tagline { font-size: 15px; color: #7c3aed; font-weight: 600; letter-spacing: 1px; margin-bottom: 36px; }
+  .btn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; max-width: 700px; margin: 0 auto; }
+  .hero-btn { padding: 18px 20px; border-radius: 16px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .hero-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+  .hero-btn.purple { background: linear-gradient(135deg,#7c3aed,#9b59d0); color: white; }
+  .hero-btn.blue { background: linear-gradient(135deg,#1976d2,#42a5f5); color: white; }
+  .hero-btn.green { background: linear-gradient(135deg,#2e7d32,#66bb6a); color: white; }
+  .hero-btn.orange { background: linear-gradient(135deg,#e65100,#ff9800); color: white; }
+  .hero-btn .btn-icon { font-size: 28px; }
+
+  /* Cards */
+  .card { background: rgba(255,255,255,0.85); border-radius: 20px; padding: 24px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+  .section-title { font-size: 26px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
+  .section-sub { color: #666; margin-bottom: 24px; font-size: 15px; }
+
+  /* Simulator */
+  .scenario-card { background: rgba(255,255,255,0.9); border-radius: 16px; padding: 24px; margin-bottom: 20px; border-left: 5px solid #7c3aed; }
+  .scenario-title { font-size: 15px; color: #7c3aed; font-weight: 600; margin-bottom: 8px; }
+  .scenario-q { font-size: 17px; font-weight: 600; color: #1a1a2e; margin-bottom: 16px; }
+  .choice-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .choice-btn { padding: 10px 22px; border-radius: 24px; border: 2px solid; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: white; }
+  .choice-btn.ai { border-color: #1976d2; color: #1976d2; }
+  .choice-btn.doc { border-color: #2e7d32; color: #2e7d32; }
+  .choice-btn.both { border-color: #e65100; color: #e65100; }
+  .choice-btn:hover, .choice-btn.selected { color: white; }
+  .choice-btn.ai.selected, .choice-btn.ai:hover { background: #1976d2; }
+  .choice-btn.doc.selected, .choice-btn.doc:hover { background: #2e7d32; }
+  .choice-btn.both.selected, .choice-btn.both:hover { background: #e65100; }
+  .feedback-box { padding: 14px 18px; border-radius: 12px; font-size: 14px; line-height: 1.6; display: none; margin-top: 8px; }
+  .feedback-box.show { display: block; }
+  .fb-ai { background: #e3f2fd; color: #0d47a1; border-left: 4px solid #1976d2; }
+  .fb-doc { background: #e8f5e9; color: #1b5e20; border-left: 4px solid #2e7d32; }
+  .fb-both { background: #fff3e0; color: #bf360c; border-left: 4px solid #e65100; }
+
+  /* Dashboard */
+  .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .dash-item { background: rgba(255,255,255,0.9); border-radius: 16px; padding: 20px; text-align: center; }
+  .dash-item label { display: block; font-size: 13px; color: #666; margin-bottom: 8px; font-weight: 500; }
+  .dash-item input { width: 100%; padding: 10px; border-radius: 10px; border: 1.5px solid #ddd; font-size: 16px; text-align: center; background: white; }
+  .dash-item input:focus { outline: none; border-color: #7c3aed; }
+  .dash-icon { font-size: 32px; margin-bottom: 8px; }
+  .track-btn { display: block; width: 100%; padding: 14px; background: linear-gradient(135deg,#7c3aed,#e91e8c); color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 16px; }
+  .feedback-area { background: rgba(255,255,255,0.9); border-radius: 16px; padding: 20px; min-height: 80px; }
+  .feedback-line { padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+
+  /* Quiz */
+  .quiz-q { font-size: 17px; font-weight: 600; color: #1a1a2e; margin-bottom: 16px; }
+  .quiz-options { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .quiz-opt { padding: 10px 24px; border-radius: 24px; border: 2px solid #7c3aed; color: #7c3aed; background: white; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .quiz-opt:hover { background: #7c3aed; color: white; }
+  .quiz-opt.correct { background: #2e7d32; border-color: #2e7d32; color: white; }
+  .quiz-opt.wrong { background: #c62828; border-color: #c62828; color: white; }
+  .quiz-explain { padding: 12px 16px; border-radius: 10px; font-size: 14px; margin-top: 8px; display: none; }
+  .quiz-explain.show { display: block; }
+  .q-correct { background: #e8f5e9; color: #1b5e20; }
+  .q-wrong { background: #ffebee; color: #b71c1c; }
+  .next-btn { margin-top: 12px; padding: 10px 28px; border-radius: 24px; background: #7c3aed; color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; display: none; }
+  .quiz-progress { font-size: 13px; color: #888; margin-bottom: 20px; }
+  .score-box { text-align: center; padding: 32px; background: linear-gradient(135deg,#7c3aed22,#e91e8c22); border-radius: 20px; }
+  .score-num { font-size: 48px; font-weight: 800; color: #7c3aed; }
+  .score-msg { font-size: 18px; font-weight: 600; color: #1a1a2e; margin-top: 8px; }
+
+  /* Challenge */
+  .challenge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .challenge-card { background: rgba(255,255,255,0.9); border-radius: 16px; padding: 20px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+  .challenge-card:hover, .challenge-card.selected { border-color: #7c3aed; background: #f3e5f5; }
+  .ch-icon { font-size: 36px; margin-bottom: 10px; }
+  .ch-name { font-size: 15px; font-weight: 600; color: #333; }
+  .ch-desc { font-size: 13px; color: #666; margin-top: 4px; }
+  .start-ch-btn { display: block; width: 100%; padding: 14px; background: linear-gradient(135deg,#7c3aed,#9b59d0); color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+  .day-tracker { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+  .day-dot { width: 40px; height: 40px; border-radius: 50%; background: #eee; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; cursor: pointer; color: #666; transition: all 0.2s; }
+  .day-dot.done { background: #7c3aed; border-color: #7c3aed; color: white; }
+  .badge-area { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .badge { background: linear-gradient(135deg,#ffd700,#ffb300); border-radius: 12px; padding: 10px 16px; font-size: 13px; font-weight: 600; color: #5d4037; display: flex; align-items: center; gap: 6px; }
+
+  /* Chatbot */
+  .chat-area { background: rgba(255,255,255,0.9); border-radius: 16px; padding: 20px; height: 360px; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 80%; padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.5; }
+  .msg.bot { background: linear-gradient(135deg,#7c3aed15,#e91e8c10); border: 1px solid #7c3aed30; align-self: flex-start; }
+  .msg.user { background: linear-gradient(135deg,#7c3aed,#e91e8c); color: white; align-self: flex-end; }
+  .chat-input-row { display: flex; gap: 10px; }
+  .chat-input-row input { flex: 1; padding: 12px 16px; border-radius: 24px; border: 1.5px solid #ddd; font-size: 15px; background: rgba(255,255,255,0.9); }
+  .chat-input-row input:focus { outline: none; border-color: #7c3aed; }
+  .send-btn { padding: 12px 24px; border-radius: 24px; background: linear-gradient(135deg,#7c3aed,#e91e8c); color: white; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .quick-qs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .quick-q { padding: 6px 14px; border-radius: 20px; border: 1.5px solid #7c3aed; color: #7c3aed; background: white; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .quick-q:hover { background: #7c3aed; color: white; }
+
+  /* Red Flags */
+  .red-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .red-card { background: linear-gradient(135deg,#ffebee,#ffcdd2); border-radius: 16px; padding: 24px; text-align: center; border: 2px solid #ef9a9a; }
+  .red-card .red-icon { font-size: 40px; margin-bottom: 10px; }
+  .red-card p { font-size: 14px; font-weight: 600; color: #b71c1c; }
+  .red-warning { background: #b71c1c; color: white; border-radius: 16px; padding: 20px 24px; text-align: center; font-size: 16px; font-weight: 700; margin-top: 8px; }
+
+  /* Scrollbar */
+  .chat-area::-webkit-scrollbar { width: 6px; }
+  .chat-area::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Language Bar -->
+<div id="lang-bar">
+  <span id="t-choose-lang">Language:</span>
+  <button class="lang-btn active" onclick="setLang('en')">English</button>
+  <button class="lang-btn" onclick="setLang('hi')">हिंदी</button>
+  <button class="lang-btn" onclick="setLang('kn')">ಕನ್ನಡ</button>
+  <button class="lang-btn" onclick="setLang('ta')">தமிழ்</button>
+</div>
+
+<!-- Nav -->
+<nav>
+  <div class="logo">🩺 Care Before Click</div>
+  <div class="nav-links">
+    <button class="nav-link" onclick="showSection('home')" id="nav-home">🏠 Home</button>
+    <button class="nav-link" onclick="showSection('simulator')" id="nav-simulator">🎮 AI or Doctor?</button>
+    <button class="nav-link" onclick="showSection('dashboard')" id="nav-dashboard">💧 Dashboard</button>
+    <button class="nav-link" onclick="showSection('challenge')" id="nav-challenge">🏆 Challenge</button>
+    <button class="nav-link" onclick="showSection('quiz')" id="nav-quiz">❓ Quiz</button>
+    <button class="nav-link" onclick="showSection('chatbot')" id="nav-chatbot">🤖 Wellness Coach</button>
+    <button class="nav-link" onclick="showSection('redflags')" id="nav-redflags">🚨 Red Flags</button>
+  </div>
+</nav>
+
+<!-- HOME -->
+<section id="home" class="active">
+  <div class="hero">
+    <h1 id="t-hero-q">Should you trust <span id="t-hero-ai">AI</span> with your health?</h1>
+    <p id="t-hero-sub">Learn when AI helps — and when only a doctor will do. Your safety comes first.</p>
+    <p class="tagline" id="t-tagline">Learn · Track · Challenge · Think Before You Click</p>
+    <div class="btn-grid">
+      <button class="hero-btn purple" onclick="showSection('simulator')">
+        <span class="btn-icon">🎮</span><span id="t-btn-game">Play a Game</span>
+      </button>
+      <button class="hero-btn blue" onclick="showSection('dashboard')">
+        <span class="btn-icon">💧</span><span id="t-btn-track">Track My Health</span>
+      </button>
+      <button class="hero-btn green" onclick="showSection('chatbot')">
+        <span class="btn-icon">🤖</span><span id="t-btn-coach">Ask Wellness Coach</span>
+      </button>
+      <button class="hero-btn orange" onclick="showSection('challenge')">
+        <span class="btn-icon">🏆</span><span id="t-btn-challenge">Take a Challenge</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- SIMULATOR -->
+<section id="simulator">
+  <h2 class="section-title" id="t-sim-title">🎮 AI or Doctor? Simulator</h2>
+  <p class="section-sub" id="t-sim-sub">Read the situation and choose your response. Learn when AI helps and when you need a real doctor.</p>
+  <div id="sim-container"></div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dashboard">
+  <h2 class="section-title" id="t-dash-title">💧 My Health Dashboard</h2>
+  <p class="section-sub" id="t-dash-sub">Enter your daily habits and get instant feedback.</p>
+  <div class="dash-grid">
+    <div class="dash-item">
+      <div class="dash-icon">💧</div>
+      <label id="t-water">Water (glasses)</label>
+      <input type="number" id="d-water" min="0" max="20" placeholder="0">
+    </div>
+    <div class="dash-item">
+      <div class="dash-icon">😴</div>
+      <label id="t-sleep">Sleep (hours)</label>
+      <input type="number" id="d-sleep" min="0" max="24" placeholder="0">
+    </div>
+    <div class="dash-item">
+      <div class="dash-icon">🏃</div>
+      <label id="t-exercise">Exercise (minutes)</label>
+      <input type="number" id="d-exercise" min="0" max="300" placeholder="0">
+    </div>
+    <div class="dash-item">
+      <div class="dash-icon">🥦</div>
+      <label id="t-veggies">Fruits/Veggies (servings)</label>
+      <input type="number" id="d-veggies" min="0" max="20" placeholder="0">
+    </div>
+  </div>
+  <button class="track-btn" onclick="trackHealth()" id="t-track-btn">📊 Get My Feedback</button>
+  <div class="feedback-area" id="dash-feedback">
+    <p style="color:#aaa;font-size:14px;" id="t-dash-hint">Enter your habits above and click Get My Feedback.</p>
+  </div>
+</section>
+
+<!-- CHALLENGE -->
+<section id="challenge">
+  <h2 class="section-title" id="t-ch-title">🏆 7-Day Health Challenge</h2>
+  <p class="section-sub" id="t-ch-sub">Pick a challenge, complete it daily, and earn badges!</p>
+  <div class="challenge-grid" id="ch-cards"></div>
+  <button class="start-ch-btn" onclick="startChallenge()" id="t-start-ch">Start Challenge</button>
+  <div id="ch-tracker" style="display:none;" class="card">
+    <h3 id="ch-tracker-title" style="font-weight:700;margin-bottom:12px;color:#7c3aed;"></h3>
+    <p style="font-size:14px;color:#666;margin-bottom:12px;" id="t-mark-done">Click each day when you complete your challenge!</p>
+    <div class="day-tracker" id="day-dots"></div>
+    <div class="badge-area" id="badge-area"></div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section id="quiz">
+  <h2 class="section-title" id="t-quiz-title">❓ Myth vs Fact Quiz</h2>
+  <p class="section-sub" id="t-quiz-sub">Test your knowledge about AI and health. Can you score 8/10?</p>
+  <div id="quiz-container"></div>
+</section>
+
+<!-- CHATBOT -->
+<section id="chatbot">
+  <h2 class="section-title" id="t-chat-title">🤖 Ask the Wellness Coach</h2>
+  <p class="section-sub" id="t-chat-sub">Ask me anything about healthy habits. I do not diagnose — I guide!</p>
+  <div class="quick-qs" id="quick-qs"></div>
+  <div class="chat-area" id="chat-area">
+    <div class="msg bot" id="t-bot-welcome">👋 Hello! I'm your Wellness Coach. Ask me about sleep, water, exercise, or healthy habits. I cannot diagnose medical conditions — for that, please see a doctor!</div>
+  </div>
+  <div class="chat-input-row">
+    <input type="text" id="chat-input" placeholder="Ask a wellness question..." onkeydown="if(event.key==='Enter') sendChat()">
+    <button class="send-btn" onclick="sendChat()" id="t-send">Send</button>
+  </div>
+</section>
+
+<!-- RED FLAGS -->
+<section id="redflags">
+  <h2 class="section-title" id="t-rf-title">🚨 Emergency Red Flags</h2>
+  <p class="section-sub" id="t-rf-sub">These are signs you must NEVER Google or ask AI. Seek emergency medical help immediately.</p>
+  <div class="red-grid" id="rf-grid"></div>
+  <div class="red-warning" id="t-rf-warn">🚨 Do NOT use AI for these emergencies. Call for medical help immediately. 🚨</div>
+</section>
+
+<script>
+// ========== TRANSLATIONS ==========
+const T = {
+  en: {
+    "t-choose-lang":"Language:",
+    "t-hero-q":"Should you trust AI with your health?",
+    "t-hero-ai":"AI",
+    "t-hero-sub":"Learn when AI helps — and when only a doctor will do. Your safety comes first.",
+    "t-tagline":"Learn · Track · Challenge · Think Before You Click",
+    "t-btn-game":"Play a Game",
+    "t-btn-track":"Track My Health",
+    "t-btn-coach":"Ask Wellness Coach",
+    "t-btn-challenge":"Take a Challenge",
+    "t-sim-title":"🎮 AI or Doctor? Simulator",
+    "t-sim-sub":"Read the situation and choose your response. Learn when AI helps and when you need a real doctor.",
+    "t-dash-title":"💧 My Health Dashboard",
+    "t-dash-sub":"Enter your daily habits and get instant feedback.",
+    "t-water":"Water (glasses)","t-sleep":"Sleep (hours)","t-exercise":"Exercise (minutes)","t-veggies":"Fruits/Veggies (servings)",
+    "t-track-btn":"📊 Get My Feedback",
+    "t-dash-hint":"Enter your habits above and click Get My Feedback.",
+    "t-ch-title":"🏆 7-Day Health Challenge",
+    "t-ch-sub":"Pick a challenge, complete it daily, and earn badges!",
+    "t-start-ch":"🚀 Start Challenge",
+    "t-mark-done":"Click each day when you complete your challenge!",
+    "t-quiz-title":"❓ Myth vs Fact Quiz",
+    "t-quiz-sub":"Test your knowledge about AI and health. Can you score 8/10?",
+    "t-chat-title":"🤖 Ask the Wellness Coach",
+    "t-chat-sub":"Ask me anything about healthy habits. I do not diagnose — I guide!",
+    "t-bot-welcome":"👋 Hello! I'm your Wellness Coach. Ask me about sleep, water, exercise, or healthy habits. I cannot diagnose medical conditions — for that, please see a doctor!",
+    "t-send":"Send",
+    "t-rf-title":"🚨 Emergency Red Flags",
+    "t-rf-sub":"These are signs you must NEVER Google or ask AI. Seek emergency medical help immediately.",
+    "t-rf-warn":"🚨 Do NOT use AI for these emergencies. Call for medical help immediately. 🚨",
+    "nav-home":"🏠 Home","nav-simulator":"🎮 AI or Doctor?","nav-dashboard":"💧 Dashboard",
+    "nav-challenge":"🏆 Challenge","nav-quiz":"❓ Quiz","nav-chatbot":"🤖 Wellness Coach","nav-redflags":"🚨 Red Flags"
+  },
+  hi: {
+    "t-choose-lang":"भाषा:",
+    "t-hero-q":"क्या आप अपनी सेहत AI को सौंप सकते हैं?",
+    "t-hero-ai":"AI",
+    "t-hero-sub":"जानें कब AI मदद करता है — और कब सिर्फ डॉक्टर ही काम आते हैं।",
+    "t-tagline":"सीखें · ट्रैक करें · चुनौती लें · क्लिक से पहले सोचें",
+    "t-btn-game":"गेम खेलें","t-btn-track":"स्वास्थ्य ट्रैक करें","t-btn-coach":"वेलनेस कोच से पूछें","t-btn-challenge":"चुनौती लें",
+    "t-sim-title":"🎮 AI या डॉक्टर? सिम्युलेटर",
+    "t-sim-sub":"परिस्थिति पढ़ें और सही विकल्प चुनें।",
+    "t-dash-title":"💧 मेरा स्वास्थ्य डैशबोर्ड",
+    "t-dash-sub":"अपनी दैनिक आदतें दर्ज करें और तुरंत फीडबैक पाएं।",
+    "t-water":"पानी (गिलास)","t-sleep":"नींद (घंटे)","t-exercise":"व्यायाम (मिनट)","t-veggies":"फल/सब्जी (परोसना)",
+    "t-track-btn":"📊 फीडबैक पाएं","t-dash-hint":"ऊपर अपनी आदतें दर्ज करें और फीडबैक पाएं।",
+    "t-ch-title":"🏆 7-दिन स्वास्थ्य चुनौती","t-ch-sub":"एक चुनौती चुनें, रोज़ पूरी करें और बैज अर्जित करें!",
+    "t-start-ch":"🚀 चुनौती शुरू करें","t-mark-done":"हर दिन जब पूरा करें तो क्लिक करें!",
+    "t-quiz-title":"❓ मिथक बनाम तथ्य प्रश्नोत्तरी","t-quiz-sub":"AI और स्वास्थ्य के बारे में अपना ज्ञान जांचें।",
+    "t-chat-title":"🤖 वेलनेस कोच से पूछें","t-chat-sub":"स्वस्थ आदतों के बारे में पूछें। मैं निदान नहीं करता — मार्गदर्शन करता हूं!",
+    "t-bot-welcome":"👋 नमस्ते! मैं आपका वेलनेस कोच हूं। नींद, पानी, व्यायाम के बारे में पूछें।",
+    "t-send":"भेजें",
+    "t-rf-title":"🚨 आपातकालीन लाल संकेत","t-rf-sub":"ये संकेत देखें तो AI से मत पूछें। तुरंत डॉक्टर के पास जाएं।",
+    "t-rf-warn":"🚨 इन आपात स्थितियों में AI का उपयोग न करें। तुरंत चिकित्सा सहायता लें! 🚨",
+    "nav-home":"🏠 होम","nav-simulator":"🎮 AI या डॉक्टर?","nav-dashboard":"💧 डैशबोर्ड",
+    "nav-challenge":"🏆 चुनौती","nav-quiz":"❓ प्रश्नोत्तरी","nav-chatbot":"🤖 वेलनेस कोच","nav-redflags":"🚨 लाल संकेत"
+  },
+  kn: {
+    "t-choose-lang":"ಭಾಷೆ:",
+    "t-hero-q":"ನಿಮ್ಮ ಆರೋಗ್ಯವನ್ನು AI ಗೆ ನಂಬಬಹುದೇ?",
+    "t-hero-ai":"AI",
+    "t-hero-sub":"AI ಯಾವಾಗ ಸಹಾಯ ಮಾಡುತ್ತದೆ ಮತ್ತು ಯಾವಾಗ ವೈದ್ಯರು ಬೇಕು ಎಂದು ತಿಳಿಯಿರಿ.",
+    "t-tagline":"ಕಲಿಯಿರಿ · ಟ್ರ್ಯಾಕ್ ಮಾಡಿ · ಸವಾಲು ತೆಗೆದುಕೊಳ್ಳಿ · ಕ್ಲಿಕ್ ಮಾಡುವ ಮೊದಲು ಯೋಚಿಸಿ",
+    "t-btn-game":"ಆಟ ಆಡಿ","t-btn-track":"ಆರೋಗ್ಯ ಟ್ರ್ಯಾಕ್ ಮಾಡಿ","t-btn-coach":"ವೆಲ್ನೆಸ್ ಕೋಚ್ ಕೇಳಿ","t-btn-challenge":"ಸವಾಲು ತೆಗೆದುಕೊಳ್ಳಿ",
+    "t-sim-title":"🎮 AI ಅಥವಾ ವೈದ್ಯರು? ಸಿಮ್ಯುಲೇಟರ್",
+    "t-sim-sub":"ಪರಿಸ್ಥಿತಿ ಓದಿ ಮತ್ತು ಸರಿಯಾದ ಆಯ್ಕೆ ಮಾಡಿ.",
+    "t-dash-title":"💧 ನನ್ನ ಆರೋಗ್ಯ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
+    "t-dash-sub":"ನಿಮ್ಮ ದೈನಂದಿನ ಅಭ್ಯಾಸಗಳನ್ನು ನಮೂದಿಸಿ ಮತ್ತು ತಕ್ಷಣ ಪ್ರತಿಕ್ರಿಯೆ ಪಡೆಯಿರಿ.",
+    "t-water":"ನೀರು (ಗ್ಲಾಸ್)","t-sleep":"ನಿದ್ದೆ (ಗಂಟೆ)","t-exercise":"ವ್ಯಾಯಾಮ (ನಿಮಿಷ)","t-veggies":"ಹಣ್ಣು/ತರಕಾರಿ",
+    "t-track-btn":"📊 ಪ್ರತಿಕ್ರಿಯೆ ಪಡೆಯಿರಿ","t-dash-hint":"ಮೇಲೆ ನಮೂದಿಸಿ ಮತ್ತು ಪ್ರತಿಕ್ರಿಯೆ ಪಡೆಯಿರಿ.",
+    "t-ch-title":"🏆 7-ದಿನ ಆರೋಗ್ಯ ಸವಾಲು","t-ch-sub":"ಸವಾಲು ಆರಿಸಿ, ಪ್ರತಿದಿನ ಪೂರ್ಣಗೊಳಿಸಿ ಮತ್ತು ಬ್ಯಾಡ್ಜ್ ಗಳಿಸಿ!",
+    "t-start-ch":"🚀 ಸವಾಲು ಪ್ರಾರಂಭಿಸಿ","t-mark-done":"ಪ್ರತಿ ದಿನ ಪೂರ್ಣಗೊಳಿಸಿದಾಗ ಕ್ಲಿಕ್ ಮಾಡಿ!",
+    "t-quiz-title":"❓ ಮಿಥ್ಯ vs ಸತ್ಯ ಪ್ರಶ್ನೋತ್ತರಿ","t-quiz-sub":"AI ಮತ್ತು ಆರೋಗ್ಯದ ಬಗ್ಗೆ ನಿಮ್ಮ ಜ್ಞಾನ ಪರೀಕ್ಷಿಸಿ.",
+    "t-chat-title":"🤖 ವೆಲ್ನೆಸ್ ಕೋಚ್ ಕೇಳಿ","t-chat-sub":"ಆರೋಗ್ಯ ಅಭ್ಯಾಸಗಳ ಬಗ್ಗೆ ಕೇಳಿ. ನಾನು ರೋಗ ನಿರ್ಣಯ ಮಾಡುವುದಿಲ್ಲ!",
+    "t-bot-welcome":"👋 ನಮಸ್ಕಾರ! ನಾನು ನಿಮ್ಮ ವೆಲ್ನೆಸ್ ಕೋಚ್. ನಿದ್ದೆ, ನೀರು, ವ್ಯಾಯಾಮದ ಬಗ್ಗೆ ಕೇಳಿ.",
+    "t-send":"ಕಳುಹಿಸಿ",
+    "t-rf-title":"🚨 ತುರ್ತು ಎಚ್ಚರಿಕೆ ಸಂಕೇತಗಳು","t-rf-sub":"ಈ ಸಂಕೇತಗಳಿದ್ದರೆ AI ಕೇಳಬೇಡಿ. ತಕ್ಷಣ ವೈದ್ಯರ ಬಳಿ ಹೋಗಿ.",
+    "t-rf-warn":"🚨 ಇಂತಹ ತುರ್ತು ಸಂದರ್ಭಗಳಲ್ಲಿ AI ಬಳಸಬೇಡಿ. ತಕ್ಷಣ ವೈದ್ಯಕೀಯ ಸಹಾಯ ಪಡೆಯಿರಿ! 🚨",
+    "nav-home":"🏠 ಮುಖಪುಟ","nav-simulator":"🎮 AI ಅಥವಾ ವೈದ್ಯರು?","nav-dashboard":"💧 ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
+    "nav-challenge":"🏆 ಸವಾಲು","nav-quiz":"❓ ಪ್ರಶ್ನೋತ್ತರಿ","nav-chatbot":"🤖 ವೆಲ್ನೆಸ್ ಕೋಚ್","nav-redflags":"🚨 ತುರ್ತು ಸಂಕೇತ"
+  },
+  ta: {
+    "t-choose-lang":"மொழி:",
+    "t-hero-q":"உங்கள் உடல்நலத்தை AI யிடம் நம்பலாமா?",
+    "t-hero-ai":"AI",
+    "t-hero-sub":"AI எப்போது உதவுகிறது, எப்போது மருத்துவர் தேவை என்று அறிந்துகொள்ளுங்கள்.",
+    "t-tagline":"கற்கவும் · கண்காணிக்கவும் · சவால் எடுக்கவும் · கிளிக் செய்வதற்கு முன் சிந்திக்கவும்",
+    "t-btn-game":"விளையாட்டு விளையாடுங்கள்","t-btn-track":"என் உடல்நலத்தை கண்காணிக்க","t-btn-coach":"வெல்னஸ் பயிற்சியாளரிடம் கேளுங்கள்","t-btn-challenge":"சவால் எடுங்கள்",
+    "t-sim-title":"🎮 AI அல்லது மருத்துவர்? சிமுலேட்டர்",
+    "t-sim-sub":"நிலைமையை படித்து சரியான தேர்வு செய்யுங்கள்.",
+    "t-dash-title":"💧 என் உடல்நல டாஷ்போர்டு",
+    "t-dash-sub":"உங்கள் தினசரி பழக்கங்களை உள்ளிட்டு உடனடி கருத்தை பெறுங்கள்.",
+    "t-water":"தண்ணீர் (கோப்பைகள்)","t-sleep":"தூக்கம் (மணி நேரம்)","t-exercise":"உடற்பயிற்சி (நிமிடங்கள்)","t-veggies":"பழங்கள்/காய்கறிகள்",
+    "t-track-btn":"📊 கருத்து பெறுங்கள்","t-dash-hint":"மேலே உள்ளிட்டு கருத்து பெறுங்கள்.",
+    "t-ch-title":"🏆 7-நாள் உடல்நல சவால்","t-ch-sub":"சவால் தேர்வு செய்யுங்கள், தினமும் முடிக்கவும், பதக்கங்கள் சம்பாதிக்கவும்!",
+    "t-start-ch":"🚀 சவால் தொடங்குங்கள்","t-mark-done":"ஒவ்வொரு நாளும் முடித்தவுடன் கிளிக் செய்யுங்கள்!",
+    "t-quiz-title":"❓ கட்டுக்கதை vs உண்மை வினாடி வினா","t-quiz-sub":"AI மற்றும் உடல்நலம் பற்றிய உங்கள் அறிவை சோதியுங்கள்.",
+    "t-chat-title":"🤖 வெல்னஸ் பயிற்சியாளரிடம் கேளுங்கள்","t-chat-sub":"ஆரோக்கியமான பழக்கங்கள் பற்றி கேளுங்கள். நான் நோயை கண்டறிய மாட்டேன்!",
+    "t-bot-welcome":"👋 வணக்கம்! நான் உங்கள் வெல்னஸ் பயிற்சியாளர். தூக்கம், தண்ணீர், உடற்பயிற்சி பற்றி கேளுங்கள்.",
+    "t-send":"அனுப்புங்கள்",
+    "t-rf-title":"🚨 அவசர எச்சரிக்கை அறிகுறிகள்","t-rf-sub":"இந்த அறிகுறிகள் இருந்தால் AI ஐ கேட்காதீர்கள். உடனடியாக மருத்துவரிடம் செல்லுங்கள்.",
+    "t-rf-warn":"🚨 இந்த அவசர நிலைமைகளில் AI ஐ பயன்படுத்தாதீர்கள். உடனடியாக மருத்துவ உதவி பெறுங்கள்! 🚨",
+    "nav-home":"🏠 முகப்பு","nav-simulator":"🎮 AI அல்லது மருத்துவர்?","nav-dashboard":"💧 டாஷ்போர்டு",
+    "nav-challenge":"🏆 சவால்","nav-quiz":"❓ வினாடி வினா","nav-chatbot":"🤖 வெல்னஸ் பயிற்சியாளர்","nav-redflags":"🚨 அவசர அறிகுறி"
+  }
+};
+
+let currentLang = 'en';
+
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  const d = T[lang];
+  for (const [id, text] of Object.entries(d)) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+  buildRedFlags();
+  buildSimulator();
+}
+
+function showSection(id) {
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ========== SIMULATOR ==========
+const scenarios = [
+  {
+    situation: {"en":"I want to start exercising for the first time.","hi":"मैं पहली बार व्यायाम शुरू करना चाहता हूं।","kn":"ನಾನು ಮೊದಲ ಬಾರಿ ವ್ಯಾಯಾಮ ಪ್ರಾರಂಭಿಸಲು ಬಯಸುತ್ತೇನೆ.","ta":"நான் முதல் முறையாக உடற்பயிற்சி தொடங்க விரும்புகிறேன்."},
+    correct: "ai",
+    feedback: {
+      ai: {"en":"✅ Great choice! AI apps can suggest beginner workout routines, track your steps, and help build habits safely. No medical risk here!","hi":"✅ बढ़िया! AI ऐप्स शुरुआती व्यायाम सुझा सकते हैं।","kn":"✅ ಅತ್ಯುತ್ತಮ! AI ಆ್ಯಪ್‌ಗಳು ಆರಂಭಿಕ ವ್ಯಾಯಾಮ ಸೂಚಿಸಬಹುದು.","ta":"✅ சிறந்த தேர்வு! AI ஆரம்பிக்கும் உடற்பயிற்சிகளை பரிந்துரைக்கலாம்."},
+      doc: {"en":"⚠️ A doctor isn't usually needed for general fitness. AI or fitness apps are a great first step!","hi":"⚠️ सामान्य फिटनेस के लिए आमतौर पर डॉक्टर की जरूरत नहीं।","kn":"⚠️ ಸಾಮಾನ್ಯ ಫಿಟ್‌ನೆಸ್‌ಗೆ ಸಾಮಾನ್ಯವಾಗಿ ವೈದ್ಯರ ಅಗತ್ಯವಿಲ್ಲ.","ta":"⚠️ பொதுவான உடற்தகுதிக்கு பொதுவாக மருத்துவர் தேவையில்லை."},
+      both: {"en":"✅ Both works! AI for routine guidance, and a doctor if you have any pre-existing conditions.","hi":"✅ दोनों ठीक है! AI दिनचर्या के लिए और डॉक्टर यदि पहले से कोई बीमारी हो।","kn":"✅ ಎರಡೂ ಕೆಲಸ ಮಾಡುತ್ತದೆ!","ta":"✅ இரண்டும் சரியே!"}
+    }
+  },
+  {
+    situation: {"en":"I've had chest pain for 2 days.","hi":"मुझे 2 दिनों से सीने में दर्द है।","kn":"ನನಗೆ 2 ದಿನಗಳಿಂದ ಎದೆ ನೋವಿದೆ.","ta":"எனக்கு 2 நாட்களாக நெஞ்சுவலி இருக்கிறது."},
+    correct: "doc",
+    feedback: {
+      ai: {"en":"❌ Dangerous! Chest pain can be a heart attack or serious condition. Never rely on AI for this. See a doctor immediately!","hi":"❌ खतरनाक! सीने में दर्द दिल का दौरा हो सकता है। तुरंत डॉक्टर के पास जाएं!","kn":"❌ ಅಪಾಯಕಾರಿ! ಎದೆ ನೋವು ಹೃದಯಾಘಾತವಾಗಿರಬಹುದು. ತಕ್ಷಣ ವೈದ್ಯರ ಬಳಿ ಹೋಗಿ!","ta":"❌ ஆபத்தானது! நெஞ்சுவலி மாரடைப்பாக இருக்கலாம். உடனடியாக மருத்துவரிடம் செல்லுங்கள்!"},
+      doc: {"en":"✅ Correct! Chest pain must be evaluated by a doctor. This is not something AI should handle.","hi":"✅ सही! सीने में दर्द का मूल्यांकन डॉक्टर द्वारा किया जाना चाहिए।","kn":"✅ ಸರಿಯಾಗಿದೆ! ಎದೆ ನೋವನ್ನು ವೈದ್ಯರು ಪರೀಕ್ಷಿಸಬೇಕು.","ta":"✅ சரியானது! நெஞ்சுவலியை மருத்துவர் பரிசோதிக்க வேண்டும்."},
+      both: {"en":"⚠️ For 2-day chest pain, skip AI entirely. Go directly to a doctor or emergency room!","hi":"⚠️ 2 दिन के सीने दर्द के लिए सीधे डॉक्टर के पास जाएं!","kn":"⚠️ 2 ದಿನದ ಎದೆ ನೋವಿಗೆ ನೇರವಾಗಿ ವೈದ್ಯರ ಬಳಿ ಹೋಗಿ!","ta":"⚠️ 2 நாள் நெஞ்சுவலிக்கு நேரடியாக மருத்துவரிடம் செல்லுங்கள்!"}
+    }
+  },
+  {
+    situation: {"en":"I want to drink more water every day.","hi":"मैं हर दिन अधिक पानी पीना चाहता हूं।","kn":"ನಾನು ಪ್ರತಿದಿನ ಹೆಚ್ಚು ನೀರು ಕುಡಿಯಲು ಬಯಸುತ್ತೇನೆ.","ta":"நான் ஒவ்வொரு நாளும் அதிக தண்ணீர் குடிக்க விரும்புகிறேன்."},
+    correct: "ai",
+    feedback: {
+      ai: {"en":"✅ Perfect for AI! Hydration trackers, reminders, and habit apps are exactly what AI tools do well.","hi":"✅ AI के लिए बिल्कुल सही! हाइड्रेशन ट्रैकर्स और रिमाइंडर्स।","kn":"✅ AI ಗೆ ಪರಿಪೂರ್ಣ! ಹೈಡ್ರೇಶನ್ ಟ್ರ್ಯಾಕರ್‌ಗಳು ಮತ್ತು ರಿಮೈಂಡರ್‌ಗಳು.","ta":"✅ AI க்கு சரியானது! நீரேற்றம் கண்காணிப்பவர்கள் மற்றும் நினைவூட்டல்கள்."},
+      doc: {"en":"⚠️ No need for a doctor here. AI hydration apps are perfect for this goal!","hi":"⚠️ यहां डॉक्टर की जरूरत नहीं। AI ऐप्स बढ़िया हैं!","kn":"⚠️ ಇಲ್ಲಿ ವೈದ್ಯರ ಅಗತ್ಯವಿಲ್ಲ.","ta":"⚠️ இங்கே மருத்துவர் தேவையில்லை."},
+      both: {"en":"✅ AI is all you need for hydration tracking. Doctor only if you have kidney issues.","hi":"✅ हाइड्रेशन ट्रैकिंग के लिए AI काफी है।","kn":"✅ ಹೈಡ್ರೇಶನ್ ಟ್ರ್ಯಾಕಿಂಗ್‌ಗೆ AI ಸಾಕು.","ta":"✅ நீரேற்றம் கண்காணிப்பதற்கு AI போதும்."}
+    }
+  },
+  {
+    situation: {"en":"I've been feeling dizzy and fainting for a week.","hi":"मैं एक हफ्ते से चक्कर आ रहे हैं और बेहोश हो रहा हूं।","kn":"ನಾನು ಒಂದು ವಾರದಿಂದ ತಲೆ ತಿರುಗುತ್ತಿದ್ದೇನೆ ಮತ್ತು ಮೂರ್ಛೆ ಬರುತ್ತಿದೆ.","ta":"ஒரு வாரமாக தலைசுற்றல் மற்றும் மயக்கம் வருகிறது."},
+    correct: "doc",
+    feedback: {
+      ai: {"en":"❌ No! Dizziness and fainting for a week is a serious medical symptom. AI cannot diagnose or treat this. See a doctor urgently!","hi":"❌ नहीं! एक हफ्ते तक चक्कर आना गंभीर है। तुरंत डॉक्टर से मिलें!","kn":"❌ ಇಲ್ಲ! ಒಂದು ವಾರ ತಲೆ ತಿರುಗುವಿಕೆ ಗಂಭೀರ. ತಕ್ಷಣ ವೈದ್ಯರನ್ನು ಭೇಟಿ ಮಾಡಿ!","ta":"❌ இல்லை! ஒரு வாரம் தலைசுற்றல் தீவிரமானது. உடனடியாக மருத்துவரிடம் செல்லுங்கள்!"},
+      doc: {"en":"✅ Absolutely correct! Prolonged dizziness and fainting needs medical evaluation immediately.","hi":"✅ बिल्कुल सही! लंबे समय तक चक्कर आना तत्काल चिकित्सा की जरूरत है।","kn":"✅ ಸಂಪೂರ್ಣ ಸರಿಯಾಗಿದೆ!","ta":"✅ முற்றிலும் சரியானது!"},
+      both: {"en":"⚠️ In this case, doctor only. Do not wait or rely on AI for persistent medical symptoms.","hi":"⚠️ इस मामले में केवल डॉक्टर। AI पर निर्भर न रहें।","kn":"⚠️ ಈ ಸಂದರ್ಭದಲ್ಲಿ ವೈದ್ಯರು ಮಾತ್ರ.","ta":"⚠️ இந்த நிலையில் மருத்துவர் மட்டுமே."}
+    }
+  },
+  {
+    situation: {"en":"I want to improve my sleep schedule.","hi":"मैं अपनी नींद की दिनचर्या सुधारना चाहता हूं।","kn":"ನಾನು ನನ್ನ ನಿದ್ದೆಯ ವೇಳಾಪಟ್ಟಿ ಸುಧಾರಿಸಲು ಬಯಸುತ್ತೇನೆ.","ta":"நான் என் தூக்க அட்டவணையை மேம்படுத்த விரும்புகிறேன்."},
+    correct: "ai",
+    feedback: {
+      ai: {"en":"✅ Great! AI sleep trackers, bedtime reminders, and habit coaches are ideal for improving sleep routines.","hi":"✅ बढ़िया! AI स्लीप ट्रैकर्स नींद की दिनचर्या सुधारने के लिए आदर्श हैं।","kn":"✅ ಅತ್ಯುತ್ತಮ! AI ಸ್ಲೀಪ್ ಟ್ರ್ಯಾಕರ್‌ಗಳು ಆದರ್ಶ.","ta":"✅ சிறந்தது! AI தூக்க கண்காணிப்பவர்கள் சிறந்தவை."},
+      doc: {"en":"⚠️ For general sleep improvement, AI apps work great. See a doctor only if you suspect a sleep disorder.","hi":"⚠️ सामान्य नींद सुधार के लिए AI ऐप्स बढ़िया। नींद विकार के लिए डॉक्टर।","kn":"⚠️ ಸಾಮಾನ್ಯ ನಿದ್ದೆ ಸುಧಾರಣೆಗೆ AI ಆ್ಯಪ್‌ಗಳು ಉತ್ತಮ.","ta":"⚠️ பொதுவான தூக்க மேம்பாட்டிற்கு AI சரியானது."},
+      both: {"en":"✅ Smart! Use AI for daily habits, and consult a doctor if sleep issues persist for months.","hi":"✅ बुद्धिमानी! AI का उपयोग दैनिक आदतों के लिए करें।","kn":"✅ ಬುದ್ಧಿವಂತ! ದೈನಂದಿನ ಅಭ್ಯಾಸಗಳಿಗೆ AI ಬಳಸಿ.","ta":"✅ புத்திசாலி! தினசரி பழக்கங்களுக்கு AI பயன்படுத்துங்கள்."}
+    }
+  }
+];
+
+function buildSimulator() {
+  const c = document.getElementById('sim-container');
+  c.innerHTML = '';
+  scenarios.forEach((sc, i) => {
+    const div = document.createElement('div');
+    div.className = 'scenario-card';
+    const L = currentLang;
+    div.innerHTML = `
+      <div class="scenario-title">Scenario ${i+1}</div>
+      <div class="scenario-q">"${sc.situation[L]}"</div>
+      <div class="choice-btns">
+        <button class="choice-btn ai" onclick="simChoose(${i},'ai',this)">🤖 AI</button>
+        <button class="choice-btn doc" onclick="simChoose(${i},'doc',this)">👨‍⚕️ Doctor</button>
+        <button class="choice-btn both" onclick="simChoose(${i},'both',this)">✅ Both</button>
+      </div>
+      <div class="feedback-box fb-ai" id="fb-${i}-ai">${sc.feedback.ai[L]}</div>
+      <div class="feedback-box fb-doc" id="fb-${i}-doc">${sc.feedback.doc[L]}</div>
+      <div class="feedback-box fb-both" id="fb-${i}-both">${sc.feedback.both[L]}</div>
+    `;
+    c.appendChild(div);
+  });
+}
+
+function simChoose(i, choice, btn) {
+  const parent = btn.closest('.scenario-card');
+  parent.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  parent.querySelectorAll('.feedback-box').forEach(f => f.classList.remove('show'));
+  document.getElementById(`fb-${i}-${choice}`).classList.add('show');
+}
+
+// ========== DASHBOARD ==========
+function trackHealth() {
+  const water = parseInt(document.getElementById('d-water').value) || 0;
+  const sleep = parseFloat(document.getElementById('d-sleep').value) || 0;
+  const exercise = parseInt(document.getElementById('d-exercise').value) || 0;
+  const veggies = parseInt(document.getElementById('d-veggies').value) || 0;
+  const fb = document.getElementById('dash-feedback');
+  const lines = [];
+  lines.push(water >= 8 ? `✅ 💧 Great job! You met your hydration goal today (${water} glasses).` : `⚠️ 💧 You drank ${water} glasses. Try to reach 8 glasses for good hydration!`);
+  lines.push(sleep >= 7 ? `✅ 😴 Excellent! You got ${sleep} hours of sleep. Keep it up!` : `⚠️ 😴 You slept ${sleep} hours. Aim for 7-9 hours for best health.`);
+  lines.push(exercise >= 30 ? `✅ 🏃 Amazing! ${exercise} minutes of exercise — you're doing great!` : `⚠️ 🏃 ${exercise} minutes of exercise. Try to get at least 30 minutes daily!`);
+  lines.push(veggies >= 5 ? `✅ 🥦 Wonderful! ${veggies} servings of fruits/veggies. Your body thanks you!` : `⚠️ 🥦 You had ${veggies} servings. Aim for 5 a day for best nutrition!`);
+  const score = [water>=8,sleep>=7,exercise>=30,veggies>=5].filter(Boolean).length;
+  const msg = score===4 ? "🌟 Perfect day! You're a health champion!" : score>=2 ? "👍 Good effort! Keep pushing toward your goals!" : "💪 Keep going! Small steps lead to big changes!";
+  fb.innerHTML = lines.map(l=>`<div class="feedback-line">${l}</div>`).join('') + `<div style="margin-top:12px;font-size:16px;font-weight:700;color:#7c3aed;">${msg}</div>`;
+}
+
+// ========== CHALLENGE ==========
+const challenges = [
+  {icon:"💧",name:{"en":"Hydration Challenge","hi":"हाइड्रेशन चुनौती","kn":"ಹೈಡ್ರೇಶನ್ ಸವಾಲು","ta":"நீரேற்ற சவால்"},desc:{"en":"Drink 8 glasses of water daily","hi":"रोज 8 गिलास पानी पिएं","kn":"ಪ್ರತಿದಿನ 8 ಗ್ಲಾಸ್ ನೀರು ಕುಡಿಯಿರಿ","ta":"தினமும் 8 கோப்பை தண்ணீர் குடிக்கவும்"}},
+  {icon:"😴",name:{"en":"Sleep Challenge","hi":"नींद चुनौती","kn":"ನಿದ್ದೆ ಸವಾಲು","ta":"தூக்க சவால்"},desc:{"en":"Sleep 8 hours each night","hi":"हर रात 8 घंटे सोएं","kn":"ಪ್ರತಿ ರಾತ್ರಿ 8 ಗಂಟೆ ನಿದ್ದೆ ಮಾಡಿ","ta":"ஒவ்வொரு இரவும் 8 மணி நேரம் தூங்கவும்"}},
+  {icon:"🚶",name:{"en":"Walking Challenge","hi":"चलने की चुनौती","kn":"ನಡಿಗೆ ಸವಾಲು","ta":"நடைப்பயிற்சி சவால்"},desc:{"en":"Walk 5000 steps every day","hi":"रोज 5000 कदम चलें","kn":"ಪ್ರತಿದಿನ 5000 ಹೆಜ್ಜೆ ನಡೆಯಿರಿ","ta":"தினமும் 5000 அடிகள் நடக்கவும்"}},
+  {icon:"📵",name:{"en":"Screen-Time Challenge","hi":"स्क्रीन-टाइम चुनौती","kn":"ಸ್ಕ್ರೀನ್-ಟೈಮ್ ಸವಾಲು","ta":"திரை நேர சவால்"},desc:{"en":"No screens 1 hour before bed","hi":"सोने से 1 घंटे पहले स्क्रीन बंद","kn":"ಮಲಗುವ 1 ಗಂಟೆ ಮೊದಲು ಸ್ಕ್ರೀನ್ ಬೇಡ","ta":"தூங்கும் 1 மணி நேரத்திற்கு முன் திரை வேண்டாம்"}}
+];
+let selectedChallenge = 0;
+let daysDone = [];
+
+function buildChallengeCards() {
+  const c = document.getElementById('ch-cards');
+  c.innerHTML = '';
+  challenges.forEach((ch, i) => {
+    const d = document.createElement('div');
+    d.className = 'challenge-card' + (i===0?' selected':'');
+    d.onclick = () => { selectedChallenge = i; document.querySelectorAll('.challenge-card').forEach(x=>x.classList.remove('selected')); d.classList.add('selected'); };
+    d.innerHTML = `<div class="ch-icon">${ch.icon}</div><div class="ch-name">${ch.name[currentLang]||ch.name.en}</div><div class="ch-desc">${ch.desc[currentLang]||ch.desc.en}</div>`;
+    c.appendChild(d);
+  });
+}
+
+function startChallenge() {
+  const ch = challenges[selectedChallenge];
+  daysDone = [];
+  document.getElementById('ch-tracker').style.display = 'block';
+  document.getElementById('ch-tracker-title').textContent = ch.icon + ' ' + (ch.name[currentLang]||ch.name.en) + ' — 7 Days';
+  const dots = document.getElementById('day-dots');
+  dots.innerHTML = '';
+  for (let i=1;i<=7;i++) {
+    const d = document.createElement('div');
+    d.className = 'day-dot';
+    d.textContent = 'D'+i;
+    d.id = 'dot-'+i;
+    d.onclick = () => toggleDay(i);
+    dots.appendChild(d);
+  }
+  document.getElementById('badge-area').innerHTML = '';
+}
+
+function toggleDay(n) {
+  const dot = document.getElementById('dot-'+n);
+  if (daysDone.includes(n)) {
+    daysDone = daysDone.filter(d=>d!==n);
+    dot.classList.remove('done');
+  } else {
+    daysDone.push(n);
+    dot.classList.add('done');
+  }
+  updateBadges();
+}
+
+function updateBadges() {
+  const ba = document.getElementById('badge-area');
+  ba.innerHTML = '';
+  if (daysDone.length>=3) ba.innerHTML += '<div class="badge">🥉 3-Day Streak!</div>';
+  if (daysDone.length>=5) ba.innerHTML += '<div class="badge">🥈 5-Day Champion!</div>';
+  if (daysDone.length>=7) ba.innerHTML += '<div class="badge">🏆 7-Day Health Hero! 🎉</div>';
+}
+
+// ========== QUIZ ==========
+const quizData = [
+  {q:{"en":"AI can diagnose every illness accurately.","hi":"AI हर बीमारी का सटीक निदान कर सकता है।","kn":"AI ಪ್ರತಿ ಕಾಯಿಲೆಯನ್ನು ನಿಖರವಾಗಿ ರೋಗನಿರ್ಣಯ ಮಾಡಬಲ್ಲದು.","ta":"AI ஒவ்வொரு நோயையும் துல்லியமாக கண்டறியலாம்."},ans:false,exp:{"en":"❌ False! AI can help with general wellness tips but cannot replace medical diagnosis.","hi":"❌ झूठ! AI सामान्य स्वास्थ्य सुझाव दे सकता है लेकिन चिकित्सा निदान की जगह नहीं ले सकता।","kn":"❌ ಸುಳ್ಳು! AI ಸಾಮಾನ್ಯ ಸ್ವಾಸ್ಥ್ಯ ಸಲಹೆಗಳಲ್ಲಿ ಸಹಾಯ ಮಾಡಬಲ್ಲದು ಆದರೆ ರೋಗನಿರ್ಣಯ ಮಾಡಲಾರದು.","ta":"❌ பொய்! AI பொதுவான ஆரோக்கிய குறிப்புகளில் உதவலாம் ஆனால் மருத்துவ நோயறிதலை மாற்ற முடியாது."}},
+  {q:{"en":"AI can help track healthy habits like water intake.","hi":"AI पानी पीने जैसी स्वस्थ आदतों को ट्रैक करने में मदद कर सकता है।","kn":"AI ನೀರು ಕುಡಿಯುವಂತಹ ಆರೋಗ್ಯಕರ ಅಭ್ಯಾಸಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಲು ಸಹಾಯ ಮಾಡಬಲ್ಲದು.","ta":"AI தண்ணீர் உட்கொள்ளல் போன்ற ஆரோக்கியமான பழக்கங்களை கண்காணிக்க உதவலாம்."},ans:true,exp:{"en":"✅ True! This is exactly where AI tools shine — tracking habits, reminders, and wellness coaching.","hi":"✅ सच! यही वह जगह है जहां AI उपकरण चमकते हैं।","kn":"✅ ನಿಜ! ಇದು AI ಉಪಕರಣಗಳು ಹೊಳೆಯುವ ಜಾಗ.","ta":"✅ உண்மை! AI கருவிகள் இங்கே சிறந்து விளங்குகின்றன."}},
+  {q:{"en":"You should use AI to diagnose chest pain.","hi":"आपको सीने के दर्द का निदान करने के लिए AI का उपयोग करना चाहिए।","kn":"ಎದೆ ನೋವನ್ನು ನಿರ್ಣಯಿಸಲು AI ಬಳಸಬೇಕು.","ta":"நெஞ்சுவலியை கண்டறிய AI பயன்படுத்த வேண்டும்."},ans:false,exp:{"en":"❌ Absolutely False! Chest pain can be life-threatening. Always see a doctor immediately.","hi":"❌ बिल्कुल गलत! सीने में दर्द जानलेवा हो सकता है। तुरंत डॉक्टर से मिलें।","kn":"❌ ಖಂಡಿತ ತಪ್ಪು! ಎದೆ ನೋವು ಜೀವಕ್ಕೆ ಅಪಾಯಕಾರಿ.","ta":"❌ முற்றிலும் தவறானது! நெஞ்சுவலி உயிருக்கு ஆபத்தானது."}},
+  {q:{"en":"Regular exercise improves both physical and mental health.","hi":"नियमित व्यायाम शारीरिक और मानसिक स्वास्थ्य दोनों में सुधार करता है।","kn":"ನಿಯಮಿತ ವ್ಯಾಯಾಮ ದೈಹಿಕ ಮತ್ತು ಮಾನಸಿಕ ಆರೋಗ್ಯ ಎರಡನ್ನೂ ಸುಧಾರಿಸುತ್ತದೆ.","ta":"தொடர்ந்து உடற்பயிற்சி உடல் மற்றும் மன ஆரோக்கியத்தை மேம்படுத்துகிறது."},ans:true,exp:{"en":"✅ True! Exercise reduces stress, improves mood, and boosts physical health.","hi":"✅ सच! व्यायाम तनाव कम करता है और मानसिक स्वास्थ्य में सुधार करता है।","kn":"✅ ನಿಜ! ವ್ಯಾಯಾಮ ಒತ್ತಡ ಕಡಿಮೆ ಮಾಡುತ್ತದೆ.","ta":"✅ உண்மை! உடற்பயிற்சி மன அழுத்தத்தை குறைக்கிறது."}},
+  {q:{"en":"AI wellness apps can replace doctors completely.","hi":"AI वेलनेस ऐप्स डॉक्टरों को पूरी तरह से बदल सकते हैं।","kn":"AI ವೆಲ್ನೆಸ್ ಆ್ಯಪ್‌ಗಳು ವೈದ್ಯರನ್ನು ಸಂಪೂರ್ಣವಾಗಿ ಬದಲಿಸಬಲ್ಲವು.","ta":"AI வெல்னஸ் பயன்பாடுகள் மருத்துவர்களை முழுமையாக மாற்றலாம்."},ans:false,exp:{"en":"❌ False! AI supports healthy habits but can never replace medical professionals for diagnosis or treatment.","hi":"❌ गलत! AI स्वस्थ आदतों का समर्थन करता है लेकिन डॉक्टरों की जगह नहीं ले सकता।","kn":"❌ ತಪ್ಪು! AI ಆರೋಗ್ಯಕರ ಅಭ್ಯಾಸಗಳನ್ನು ಬೆಂಬಲಿಸುತ್ತದೆ ಆದರೆ ವೈದ್ಯರ ಸ್ಥಾನ ತೆಗೆದುಕೊಳ್ಳಲಾರದು.","ta":"❌ தவறானது! AI ஆரோக்கியமான பழக்கங்களை ஆதரிக்கிறது ஆனால் மருத்துவர்களை மாற்ற முடியாது."}},
+  {q:{"en":"Drinking 8 glasses of water daily is good for health.","hi":"रोज 8 गिलास पानी पीना स्वास्थ्य के लिए अच्छा है।","kn":"ಪ್ರತಿದಿನ 8 ಗ್ಲಾಸ್ ನೀರು ಕುಡಿಯುವುದು ಆರೋಗ್ಯಕ್ಕೆ ಒಳ್ಳೆಯದು.","ta":"தினமும் 8 கோப்பை தண்ணீர் குடிப்பது ஆரோக்கியத்திற்கு நல்லது."},ans:true,exp:{"en":"✅ True! Proper hydration helps kidney function, skin health, energy, and concentration.","hi":"✅ सच! उचित हाइड्रेशन किडनी, त्वचा और ऊर्जा में मदद करता है।","kn":"✅ ನಿಜ! ಸರಿಯಾದ ಜಲಸಂಚಯನ ಮೂತ್ರಪಿಂಡ ಮತ್ತು ಚರ್ಮ ಆರೋಗ್ಯಕ್ಕೆ ಸಹಾಯ ಮಾಡುತ್ತದೆ.","ta":"✅ உண்மை! சரியான நீரேற்றம் சிறுநீரகம் மற்றும் தோல் ஆரோக்கியத்திற்கு உதவுகிறது."}},
+  {q:{"en":"You should ask AI if you are having difficulty breathing.","hi":"अगर सांस लेने में तकलीफ हो तो AI से पूछना चाहिए।","kn":"ಉಸಿರಾಡಲು ತೊಂದರೆ ಆಗುತ್ತಿದ್ದರೆ AI ಕೇಳಬೇಕು.","ta":"சுவாசிக்க சிரமம் இருந்தால் AI ஐ கேட்க வேண்டும்."},ans:false,exp:{"en":"❌ Never! Breathing difficulties are a medical emergency. Call emergency services immediately!","hi":"❌ कभी नहीं! सांस लेने में तकलीफ चिकित्सा आपातकाल है। तुरंत आपातकालीन सेवाओं को बुलाएं!","kn":"❌ ಎಂದಿಗೂ ಬೇಡ! ಉಸಿರಾಟ ತೊಂದರೆ ವೈದ್ಯಕೀಯ ತುರ್ತು ಪರಿಸ್ಥಿತಿ!","ta":"❌ ஒருபோதும் வேண்டாம்! சுவாச சிரமம் மருத்துவ அவசரநிலை!"}},
+  {q:{"en":"AI can help you set sleep reminders and bedtime routines.","hi":"AI आपको सोने की याद दिला सकता है और सोने की दिनचर्या सेट करने में मदद कर सकता है।","kn":"AI ನಿಮ್ಮ ನಿದ್ದೆ ರಿಮೈಂಡರ್‌ಗಳು ಮತ್ತು ಮಲಗುವ ಮೊದಲಿನ ದಿನಚರಿ ಹೊಂದಿಸಲು ಸಹಾಯ ಮಾಡಬಲ್ಲದು.","ta":"AI தூக்க நினைவூட்டல்கள் மற்றும் படுக்கை நேர வழக்கங்களை அமைக்க உதவலாம்."},ans:true,exp:{"en":"✅ True! Sleep apps, AI reminders, and guided meditation apps are great tools for sleep improvement.","hi":"✅ सच! स्लीप ऐप्स और AI रिमाइंडर्स नींद सुधार के लिए बेहतरीन टूल हैं।","kn":"✅ ನಿಜ! ಸ್ಲೀಪ್ ಆ್ಯಪ್‌ಗಳು ಮತ್ತು AI ರಿಮೈಂಡರ್‌ಗಳು ನಿದ್ದೆ ಸುಧಾರಣೆಗೆ ಉತ್ತಮ ಸಾಧನಗಳಾಗಿವೆ.","ta":"✅ உண்மை! தூக்க ஆப்புகள் மற்றும் AI நினைவூட்டல்கள் சிறந்த கருவிகள்."}},
+  {q:{"en":"Emergency situations like unconsciousness should be handled by AI chatbots.","hi":"बेहोशी जैसी आपात स्थितियों को AI चैटबॉट द्वारा संभाला जाना चाहिए।","kn":"ಮೂರ್ಛೆ ಬೀಳುವಂತಹ ತುರ್ತು ಸಂದರ್ಭಗಳನ್ನು AI ಚಾಟ್‌ಬಾಟ್‌ಗಳು ನಿರ್ವಹಿಸಬೇಕು.","ta":"மயக்கம் போன்ற அவசர நிலைமைகளை AI சாட்போட்கள் கையாள வேண்டும்."},ans:false,exp:{"en":"❌ Absolutely False! Call emergency services immediately. Never waste time with AI in emergencies!","hi":"❌ बिल्कुल गलत! तुरंत आपातकालीन सेवाएं बुलाएं। आपात में AI पर समय बर्बाद न करें!","kn":"❌ ಖಂಡಿತ ತಪ್ಪು! ತಕ್ಷಣ ತುರ್ತು ಸೇವೆಗಳನ್ನು ಕರೆಯಿರಿ.","ta":"❌ முற்றிலும் தவறானது! உடனடியாக அவசர சேவைகளை அழைக்கவும்."}},
+  {q:{"en":"Eating fruits and vegetables every day reduces risk of many diseases.","hi":"रोज फल और सब्जियां खाने से कई बीमारियों का खतरा कम होता है।","kn":"ಪ್ರತಿದಿನ ಹಣ್ಣು ಮತ್ತು ತರಕಾರಿ ತಿನ್ನುವುದು ಅನೇಕ ರೋಗಗಳ ಅಪಾಯವನ್ನು ಕಡಿಮೆ ಮಾಡುತ್ತದೆ.","ta":"தினமும் பழங்கள் மற்றும் காய்கறிகள் சாப்பிடுவது பல நோய்களின் அபாயத்தை குறைக்கிறது."},ans:true,exp:{"en":"✅ True! A diet rich in fruits and vegetables helps prevent heart disease, diabetes, and cancer.","hi":"✅ सच! फल और सब्जियों से भरपूर आहार हृदय रोग, मधुमेह और कैंसर को रोकने में मदद करता है।","kn":"✅ ನಿಜ! ಹಣ್ಣು ಮತ್ತು ತರಕಾರಿಗಳಿಂದ ಸಮೃದ್ಧ ಆಹಾರ ಹೃದ್ರೋಗ, ಮಧುಮೇಹ ತಡೆಯಲು ಸಹಾಯ ಮಾಡುತ್ತದೆ.","ta":"✅ உண்மை! பழங்கள் மற்றும் காய்கறிகள் நிறைந்த உணவு இதய நோய், நீரிழிவு தடுக்க உதவுகிறது."}}
+];
+
+let currentQ = 0;
+let score = 0;
+let answered = false;
+
+function buildQuiz() {
+  const c = document.getElementById('quiz-container');
+  if (currentQ >= quizData.length) {
+    const pct = Math.round((score/quizData.length)*100);
+    const msg = score>=8?"🌟 You're becoming an AI Health Expert!":score>=5?"👍 Good job! Keep learning!":"💪 Keep going! Practice makes perfect!";
+    c.innerHTML = `<div class="score-box"><div class="score-num">${score}/${quizData.length}</div><div style="font-size:15px;color:#666;margin-top:4px;">${pct}%</div><div class="score-msg">${msg}</div><button class="track-btn" style="margin-top:24px;max-width:240px;" onclick="currentQ=0;score=0;buildQuiz();">🔄 Try Again</button></div>`;
+    return;
+  }
+  const q = quizData[currentQ];
+  const L = currentLang;
+  answered = false;
+  c.innerHTML = `
+    <div class="quiz-progress">Question ${currentQ+1} of ${quizData.length} | Score: ${score}</div>
+    <div class="card">
+      <div class="quiz-q">"${q.q[L]||q.q.en}"</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" id="opt-true" onclick="answerQuiz(true)">✅ True</button>
+        <button class="quiz-opt" id="opt-false" onclick="answerQuiz(false)">❌ False</button>
+      </div>
+      <div class="quiz-explain" id="q-explain"></div>
+      <button class="next-btn" id="next-btn" onclick="currentQ++;buildQuiz();">Next Question →</button>
+    </div>`;
+}
+
+function answerQuiz(chosen) {
+  if (answered) return;
+  answered = true;
+  const q = quizData[currentQ];
+  const L = currentLang;
+  const correct = chosen === q.ans;
+  if (correct) score++;
+  document.getElementById('opt-true').className = 'quiz-opt' + (q.ans===true?' correct':' wrong');
+  document.getElementById('opt-false').className = 'quiz-opt' + (q.ans===false?' correct':' wrong');
+  const exp = document.getElementById('q-explain');
+  exp.textContent = q.exp[L]||q.exp.en;
+  exp.className = 'quiz-explain show ' + (correct?'q-correct':'q-wrong');
+  document.getElementById('next-btn').style.display = 'inline-block';
+}
+
+// ========== CHATBOT ==========
+const chatResponses = {
+  water: {"en":"💧 You should drink about 8 glasses (2 litres) of water daily. Drink a glass when you wake up and before each meal!","hi":"💧 आपको रोजाना लगभग 8 गिलास (2 लीटर) पानी पीना चाहिए।","kn":"💧 ನೀವು ಪ್ರತಿದಿನ ಸುಮಾರು 8 ಗ್ಲಾಸ್ (2 ಲೀಟರ್) ನೀರು ಕುಡಿಯಬೇಕು.","ta":"💧 நீங்கள் தினமும் சுமார் 8 கோப்பை (2 லிட்டர்) தண்ணீர் குடிக்க வேண்டும்."},
+  sleep: {"en":"😴 For better sleep: Go to bed at the same time every night, avoid screens 1 hour before bed, keep your room cool and dark, and avoid caffeine in the evening.","hi":"😴 बेहतर नींद के लिए: हर रात एक ही समय पर सोएं, सोने से 1 घंटे पहले स्क्रीन से बचें।","kn":"😴 ಉತ್ತಮ ನಿದ್ದೆಗಾಗಿ: ಪ್ರತಿ ರಾತ್ರಿ ಒಂದೇ ಸಮಯಕ್ಕೆ ಮಲಗಿ.","ta":"😴 நல்ல தூக்கத்திற்கு: ஒவ்வொரு இரவும் ஒரே நேரத்தில் தூங்கவும்."},
+  exercise: {"en":"🏃 Start small! Try a 15-minute walk daily, then gradually increase. Aim for 30 minutes of moderate exercise 5 days a week.","hi":"🏃 छोटे से शुरू करें! रोज 15 मिनट चलें, फिर धीरे-धीरे बढ़ाएं।","kn":"🏃 ಚಿಕ್ಕದಾಗಿ ಪ್ರಾರಂಭಿಸಿ! ಪ್ರತಿದಿನ 15 ನಿಮಿಷ ನಡೆಯಿರಿ.","ta":"🏃 சிறிதாக தொடங்குங்கள்! தினமும் 15 நிமிட நடையில் தொடங்கவும்."},
+  walk: {"en":"🚶 Walking Challenge: Walk for 20 minutes today, 25 minutes tomorrow, and 30 minutes by Day 3. Track your steps using any free app!","hi":"🚶 वाकिंग चैलेंज: आज 20 मिनट, कल 25 मिनट और तीसरे दिन 30 मिनट चलें!","kn":"🚶 ವಾಕಿಂಗ್ ಚಾಲೆಂಜ್: ಇಂದು 20 ನಿಮಿಷ, ನಾಳೆ 25 ನಿಮಿಷ ನಡೆಯಿರಿ!","ta":"🚶 நடைப்பயிற்சி சவால்: இன்று 20 நிமிடம், நாளை 25 நிமிடம் நடக்கவும்!"},
+  diet: {"en":"🥗 Aim for 5 servings of fruits and vegetables daily. Include colorful veggies, reduce processed food, and add a source of protein to each meal.","hi":"🥗 रोज 5 बार फल और सब्जियां खाएं। रंगीन सब्जियां शामिल करें।","kn":"🥗 ಪ್ರತಿದಿನ 5 ಬಾರಿ ಹಣ್ಣು ಮತ್ತು ತರಕಾರಿ ತಿನ್ನಿರಿ.","ta":"🥗 தினமும் 5 முறை பழங்கள் மற்றும் காய்கறிகள் சாப்பிடவும்."},
+  emergency: {"en":"🚨 I cannot help with medical emergencies. Please call emergency services or go to the nearest hospital immediately!","hi":"🚨 मैं चिकित्सा आपात स्थितियों में मदद नहीं कर सकता। तुरंत आपातकालीन सेवाओं को बुलाएं!","kn":"🚨 ನಾನು ವೈದ್ಯಕೀಯ ತುರ್ತು ಪರಿಸ್ಥಿತಿಗಳಲ್ಲಿ ಸಹಾಯ ಮಾಡಲಾರೆ. ತಕ್ಷಣ ತುರ್ತು ಸೇವೆಗಳನ್ನು ಕರೆಯಿರಿ!","ta":"🚨 மருத்துவ அவசரநிலைகளில் நான் உதவ முடியாது. உடனடியாக அவசர சேவைகளை அழைக்கவும்!"},
+  default: {"en":"🤖 That's a great question! For personalized health advice, I recommend speaking with a healthcare professional. I can help with general wellness tips on sleep, water, diet, and exercise!","hi":"🤖 अच्छा सवाल! व्यक्तिगत स्वास्थ्य सलाह के लिए, स्वास्थ्य पेशेवर से बात करें।","kn":"🤖 ಉತ್ತಮ ಪ್ರಶ್ನೆ! ವ್ಯಕ್ತಿಗತ ಆರೋಗ್ಯ ಸಲಹೆಗಾಗಿ, ಆರೋಗ್ಯ ವೃತ್ತಿಪರರೊಂದಿಗೆ ಮಾತನಾಡಿ.","ta":"🤖 நல்ல கேள்வி! தனிப்பயன் ஆரோக்கிய ஆலோசனைக்கு, சுகாதார நிபுணரிடம் பேசுங்கள்."}
+};
+const quickQs = ["How can I sleep better?","How much water should I drink?","Give me a walking challenge","What foods should I eat?","How to exercise daily?"];
+
+function buildChat() {
+  const qc = document.getElementById('quick-qs');
+  qc.innerHTML = '';
+  quickQs.forEach(q => {
+    const b = document.createElement('button');
+    b.className = 'quick-q';
+    b.textContent = q;
+    b.onclick = () => { document.getElementById('chat-input').value = q; sendChat(); };
+    qc.appendChild(b);
+  });
+}
+
+function sendChat() {
+  const inp = document.getElementById('chat-input');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  inp.value = '';
+  const ca = document.getElementById('chat-area');
+  const um = document.createElement('div');
+  um.className = 'msg user';
+  um.textContent = msg;
+  ca.appendChild(um);
+  const lower = msg.toLowerCase();
+  let resp;
+  if (lower.includes('chest') || lower.includes('pain') || lower.includes('breath') || lower.includes('bleed') || lower.includes('faint') || lower.includes('unconscious') || lower.includes('emergency') || lower.includes('dizz'))
+    resp = chatResponses.emergency[currentLang] || chatResponses.emergency.en;
+  else if (lower.includes('water') || lower.includes('drink') || lower.includes('hydrat'))
+    resp = chatResponses.water[currentLang] || chatResponses.water.en;
+  else if (lower.includes('sleep') || lower.includes('bed') || lower.includes('nap') || lower.includes('नींद') || lower.includes('ನಿದ್ದೆ') || lower.includes('தூக்க'))
+    resp = chatResponses.sleep[currentLang] || chatResponses.sleep.en;
+  else if (lower.includes('walk') || lower.includes('step'))
+    resp = chatResponses.walk[currentLang] || chatResponses.walk.en;
+  else if (lower.includes('exercise') || lower.includes('workout') || lower.includes('gym') || lower.includes('fit'))
+    resp = chatResponses.exercise[currentLang] || chatResponses.exercise.en;
+  else if (lower.includes('food') || lower.includes('eat') || lower.includes('diet') || lower.includes('veggie') || lower.includes('fruit') || lower.includes('nutrition'))
+    resp = chatResponses.diet[currentLang] || chatResponses.diet.en;
+  else resp = chatResponses.default[currentLang] || chatResponses.default.en;
+  setTimeout(() => {
+    const bm = document.createElement('div');
+    bm.className = 'msg bot';
+    bm.textContent = resp;
+    ca.appendChild(bm);
+    ca.scrollTop = ca.scrollHeight;
+  }, 600);
+  ca.scrollTop = ca.scrollHeight;
+}
+
+// ========== RED FLAGS ==========
+const redFlags = [
+  {icon:"😮‍💨",text:{"en":"Trouble Breathing","hi":"सांस लेने में तकलीफ","kn":"ಉಸಿರಾಡಲು ತೊಂದರೆ","ta":"சுவாசிக்க சிரமம்"}},
+  {icon:"💔",text:{"en":"Severe Chest Pain","hi":"तेज सीने में दर्द","kn":"ತೀವ್ರ ಎದೆ ನೋವು","ta":"தீவிர நெஞ்சுவலி"}},
+  {icon:"😵",text:{"en":"Unconsciousness","hi":"बेहोशी","kn":"ಮೂರ್ಛೆ","ta":"மயக்கம்"}},
+  {icon:"🩸",text:{"en":"Severe Bleeding","hi":"गंभीर रक्तस्राव","kn":"ತೀವ್ರ ರಕ್ತಸ್ರಾವ","ta":"தீவிர இரத்தப்போக்கு"}},
+  {icon:"🤢",text:{"en":"Sudden Severe Vomiting","hi":"अचानक तेज उल्टी","kn":"ಹಠಾತ್ ತೀವ್ರ ವಾಂತಿ","ta":"திடீர் தீவிர வாந்தி"}},
+  {icon:"🧠",text:{"en":"Sudden Memory Loss","hi":"अचानक याददाश्त खोना","kn":"ಹಠಾತ್ ಸ್ಮೃತಿ ನಷ್ಟ","ta":"திடீர் நினைவு இழப்பு"}}
+];
+
+function buildRedFlags() {
+  const g = document.getElementById('rf-grid');
+  g.innerHTML = '';
+  redFlags.forEach(rf => {
+    const d = document.createElement('div');
+    d.className = 'red-card';
+    d.innerHTML = `<div class="red-icon">🚨 ${rf.icon}</div><p>${rf.text[currentLang]||rf.text.en}</p>`;
+    g.appendChild(d);
+  });
+}
+
+// ========== INIT ==========
+buildSimulator();
+buildChallengeCards();
+buildQuiz();
+buildChat();
+buildRedFlags();
+</script>
+</body>
+</html>
